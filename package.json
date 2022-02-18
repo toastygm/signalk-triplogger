@@ -1,6 +1,6 @@
 {
   "name": "@meri-imperiumi/signalk-triplogger",
-  "version": "1.0.2",
+  "version": "1.0.0",
   "description": "Log the length of the current trip",
   "main": "index.js",
   "scripts": {
