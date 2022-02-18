@@ -31,6 +31,7 @@ module.exports = (app) => {
 
     function resetTrip() {
       const resetTime = new Date();
+      app.debug(`Reset trip. Was ${log.trip}m`);
       log.trip = 0;
       log.inTrip = true;
       app.handleMessage(plugin.id, {
@@ -57,6 +58,7 @@ module.exports = (app) => {
     }
 
     function appendTrip(distance) {
+      app.debug(`Append trip by ${distance}m. Was ${log.trip}m`);
       log.trip += distance;
       app.handleMessage(plugin.id, {
         context: `vessels.${app.selfId}`,
