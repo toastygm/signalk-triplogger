@@ -110,7 +110,7 @@ module.exports = (app) => {
               return;
             }
             if (v.path === 'navigation.position') {
-              const newPosition = new Point(u.value.latitude, u.value.longitude);
+              const newPosition = new Point(v.value.latitude, v.value.longitude);
               if (log.lastPosition && log.inTrip) {
                 const distance = log.lastPosition.distanceTo(newPosition) * 1000;
                 appendTrip(distance);
