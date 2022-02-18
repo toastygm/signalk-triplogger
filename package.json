@@ -1,0 +1,36 @@
+{
+  "name": "@meri-imperiumi/signalk-triplogger",
+  "version": "1.0.2",
+  "description": "Log the length of the current trip",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/meri-imperiumi/signalk-triplogger.git"
+  },
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-category-utility"
+  ],
+  "signalk-plugin-enabled-by-default": true,
+  "author": "Henri Bergius <henri.bergius@iki.fi>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/meri-imperiumi/signalk-triplogger/issues"
+  },
+  "homepage": "https://github.com/meri-imperiumi/signalk-triplogger#readme",
+  "dependencies": {
+    "where": "^0.4.1"
+  },
+  "devDependencies": {
+    "eslint": "^7.14.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.18.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
