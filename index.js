@@ -31,7 +31,7 @@ module.exports = (app) => {
 
     function resetTrip() {
       const resetTime = new Date();
-      app.debug(`Reset trip. Was ${log.trip}m`);
+      app.debug(`Reset trip. Was ${log.trip.toFixed(2)}m`);
       log.trip = 0;
       log.inTrip = true;
       app.handleMessage(plugin.id, {
@@ -58,7 +58,7 @@ module.exports = (app) => {
     }
 
     function appendTrip(distance) {
-      app.debug(`Append trip by ${distance}m. Was ${log.trip}m`);
+      app.debug(`Append trip by ${distance.toFixed(2)}m. Was ${log.trip.toFixed(2)}m`);
       log.trip += distance;
       app.handleMessage(plugin.id, {
         context: `vessels.${app.selfId}`,
@@ -117,9 +117,9 @@ module.exports = (app) => {
               }
               const tripNm = log.trip / 1852;
               if (log.inTrip) {
-                setStatus(`Trip under way, current distance ${tripNm}NM`);
+                setStatus(`Trip under way, current distance ${tripNm.toFixed(2)}NM`);
               } else {
-                setStatus(`Stopped. Last trip ${tripNm}NM`);
+                setStatus(`Stopped. Last trip ${tripNm.toFixed(2)}NM`);
               }
               log.lastPosition = newPosition;
             }
