@@ -83,7 +83,7 @@ class Logger {
 
   exists() {
     return new Promise((resolve) => {
-      fs.readFile(this.filename, 'utf-8', (err) => {
+      fs.stat(this.filename, (err) => {
         if (err) {
           resolve(false);
           return;
