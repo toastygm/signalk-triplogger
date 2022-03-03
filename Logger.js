@@ -44,7 +44,7 @@ class Logger {
   }
 
   appendTrip(distance) {
-    if (this.log.ended) {
+    if (this.log.ended || !this.inTrip()) {
       return;
     }
     if (!this.log.total) {
