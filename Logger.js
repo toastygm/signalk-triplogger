@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 function toNM(meters) {
-  return meters / 1852;
+  return (meters / 1852).toFixed(2);
 }
 
 class Logger {
