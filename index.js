@@ -1,18 +1,60 @@
 const { Point } = require('where');
+const { join } = require('path');
+const Logger = require('./Logger');
 
 module.exports = (app) => {
   const plugin = {};
   let unsubscribes = [];
-  const log = {
-    trip: 0,
-    inTrip: false,
-    lastPosition: null,
-  };
+  let lastPosition = null;
+  const logs = {};
 
   plugin.id = 'signalk-triplogger';
   plugin.name = 'Trip logger';
   plugin.description = 'Log the length of the current trip';
   const setStatus = app.setPluginStatus || app.setProviderStatus;
+  function getLogNames() {
+    const dateString = new Date().toISOString();
+    return [
+      'current', // Current trip
+      dateString.substr(0, 4), // Annual log
+      dateString.substr(0, 7), // Monthly log
+      dateString.substr(0, 10), // Daily log
+    ];
+  }
+
+  function getLogPath(logName) {
+    return join(app.getDataDirPath(), `${logName}.json`);
+  }
+
+  function prepareLogs() {
+    const newLogs = getLogNames();
+    return Promise.all(Object.keys(logs).map((logName) => {
+      // Close old logs
+      if (newLogs.indexOf(logName) === -1) {
+        // If log is not in the new log list, end it
+        const oldLog = logs[logName];
+        delete logs[logName];
+        return oldLog.endTrip();
+      }
+      return Promise.resolve();
+    }))
+      .then(() => Promise.all(newLogs.map((logName) => {
+        // Load new logs
+        if (!logs[logName]) {
+          // New log, or saved log?
+          logs[logName] = new Logger(getLogPath(logName));
+          return logs[logName].exists()
+            .then((exists) => {
+              if (!exists) {
+                // New log, no need to load
+                return Promise.resolve();
+              }
+              return logs[logName].load();
+            });
+        }
+        return Promise.resolve();
+      })));
+  }
 
   plugin.start = (options) => {
     const subscription = {
@@ -30,10 +72,8 @@ module.exports = (app) => {
     };
 
     function resetTrip() {
-      const resetTime = new Date();
-      app.debug(`Reset trip. Was ${log.trip.toFixed(2)}m`);
-      log.trip = 0;
-      log.inTrip = true;
+      logs.current.reset();
+      const resetTime = logs.current.log.started;
       app.handleMessage(plugin.id, {
         context: `vessels.${app.selfId}`,
         updates: [
@@ -45,7 +85,7 @@ module.exports = (app) => {
             values: [
               {
                 path: 'navigation.trip.log',
-                value: 0,
+                value: logs.current.log.total,
               },
               {
                 path: 'navigation.trip.lastReset',
@@ -58,25 +98,49 @@ module.exports = (app) => {
     }
 
     function appendTrip(distance) {
-      app.debug(`Append trip by ${distance.toFixed(2)}m. Was ${log.trip.toFixed(2)}m`);
-      log.trip += distance;
-      app.handleMessage(plugin.id, {
-        context: `vessels.${app.selfId}`,
-        updates: [
-          {
-            source: {
-              label: plugin.id,
-            },
-            timestamp: (new Date().toISOString()),
-            values: [
+      prepareLogs()
+        .then(() => Promise.all(Object.keys(logs).map((logName) => {
+          // Append distance to all active logs and save
+          logs[logName].appendTrip(distance);
+          // TODO: We may want to throttle saves to be less frequent
+          return logs[logName].save();
+        })))
+        .then(() => {
+          app.handleMessage(plugin.id, {
+            context: `vessels.${app.selfId}`,
+            updates: [
               {
-                path: 'navigation.trip.log',
-                value: log.trip,
+                source: {
+                  label: plugin.id,
+                },
+                timestamp: (new Date().toISOString()),
+                values: [
+                  {
+                    path: 'navigation.trip.log',
+                    value: logs.current.log.total,
+                  },
+                ],
               },
             ],
-          },
-        ],
-      });
+          });
+        });
+    }
+
+    function handleState(state) {
+      prepareLogs()
+        .then(() => {
+          const wasInTrip = logs.current.inTrip();
+          Object.keys(logs).forEach((logName) => {
+            // Allow loggers to keep track of distance per state
+            logs[logName].setState(state);
+          });
+          const isInTrip = logs.current.inTrip();
+          if (isInTrip && !wasInTrip) {
+            // New trip has started
+            resetTrip();
+            setStatus('New trip has started. Log reset');
+          }
+        });
     }
 
     app.subscriptionmanager.subscribe(
@@ -96,32 +160,22 @@ module.exports = (app) => {
           u.values.forEach((v) => {
             if (v.path === 'navigation.state') {
               // Potential state change
-              if (v.value === 'sailing' || v.value === 'motoring') {
-                if (!log.inTrip) {
-                  // New trip has started
-                  resetTrip();
-                  setStatus('New trip has started. Log reset');
-                }
-                // We can ignore switches between sailing and motoring inside trip
-              } else {
-                // Trip has ended, stop calculating log
-                log.inTrip = false;
-              }
-              return;
+              handleState(v.value);
             }
             if (v.path === 'navigation.position') {
               const newPosition = new Point(v.value.latitude, v.value.longitude);
-              if (log.lastPosition && log.inTrip) {
-                const distance = log.lastPosition.distanceTo(newPosition) * 1000;
+              if (lastPosition) {
+                const distance = lastPosition.distanceTo(newPosition) * 1000;
                 appendTrip(distance);
               }
-              const tripNm = log.trip / 1852;
-              if (log.inTrip) {
-                setStatus(`Trip under way, current distance ${tripNm.toFixed(2)}NM`);
-              } else {
-                setStatus(`Stopped. Last trip ${tripNm.toFixed(2)}NM`);
+              lastPosition = newPosition;
+              if (logs.current) {
+                if (logs.current.inTrip()) {
+                  setStatus(`Under way: ${logs.current}`);
+                } else {
+                  setStatus(`Stopped. Last trip: ${logs.current}`);
+                }
               }
-              log.lastPosition = newPosition;
             }
           });
         });
