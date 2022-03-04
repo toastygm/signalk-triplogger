@@ -6,6 +6,8 @@ The plugin monitors vessel `navigation.state` as set by the [signalk-autostate](
 
 ## Changes
 
+* 1.1.0 (March 4th 2022)
+  - Persist logs for current day/month/year, also by sailing/motoring
 * 1.0.1 (February 18th 2022)
   - Fix issue with reading lat and lon
 * 1.0.0 (February 18th 2022)
