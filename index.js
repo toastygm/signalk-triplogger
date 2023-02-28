@@ -163,6 +163,9 @@ module.exports = (app) => {
               handleState(v.value);
             }
             if (v.path === 'navigation.position') {
+              if (Number.isNaN(Number(v.value.latitude)) || Number.isNaN(Number(v.value.longitude))) {
+                return;
+              }
               const newPosition = new Point(v.value.latitude, v.value.longitude);
               if (lastPosition) {
                 const distance = lastPosition.distanceTo(newPosition) * 1000;
