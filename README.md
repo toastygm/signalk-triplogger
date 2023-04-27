@@ -6,6 +6,8 @@ The plugin monitors vessel `navigation.state` as set by the [signalk-autostate](
 
 ## Changes
 
+* 1.2.0 (April 27th 2023)
+  - Added support for populating `navigation.log` for totals
 * 1.1.1 (February 28th 2023)
   - Fix issue when `navigation.position` doesn't contain coordinates
 * 1.1.0 (March 4th 2022)
