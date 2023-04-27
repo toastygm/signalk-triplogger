@@ -16,6 +16,7 @@ module.exports = (app) => {
     const dateString = new Date().toISOString();
     return [
       'current', // Current trip
+      'total', // Total log
       dateString.substr(0, 4), // Annual log
       dateString.substr(0, 7), // Monthly log
       dateString.substr(0, 10), // Daily log
@@ -74,6 +75,24 @@ module.exports = (app) => {
     function resetTrip() {
       logs.current.reset();
       const resetTime = logs.current.log.started;
+      const values = [
+        {
+          path: 'navigation.trip.log',
+          value: logs.current.log.total,
+        },
+        {
+          path: 'navigation.trip.lastReset',
+          value: resetTime,
+        },
+      ];
+      if (options.totals) {
+        const base = options.totals_base || 0;
+        values.push({
+          path: 'navigation.log',
+          value: logs.total.log.total + base,
+        });
+      }
+
       app.handleMessage(plugin.id, {
         context: `vessels.${app.selfId}`,
         updates: [
@@ -82,16 +101,7 @@ module.exports = (app) => {
               label: plugin.id,
             },
             timestamp: (new Date().toISOString()),
-            values: [
-              {
-                path: 'navigation.trip.log',
-                value: logs.current.log.total,
-              },
-              {
-                path: 'navigation.trip.lastReset',
-                value: resetTime,
-              },
-            ],
+            values,
           },
         ],
       });
@@ -106,6 +116,19 @@ module.exports = (app) => {
           return logs[logName].save();
         })))
         .then(() => {
+          const values = [
+            {
+              path: 'navigation.trip.log',
+              value: logs.current.log.total,
+            },
+          ];
+          if (options.totals) {
+            const base = options.totals_base || 0;
+            values.push({
+              path: 'navigation.log',
+              value: logs.total.log.total + base,
+            });
+          }
           app.handleMessage(plugin.id, {
             context: `vessels.${app.selfId}`,
             updates: [
@@ -114,12 +137,7 @@ module.exports = (app) => {
                   label: plugin.id,
                 },
                 timestamp: (new Date().toISOString()),
-                values: [
-                  {
-                    path: 'navigation.trip.log',
-                    value: logs.current.log.total,
-                  },
-                ],
+                values,
               },
             ],
           });
@@ -201,6 +219,16 @@ module.exports = (app) => {
         type: 'number',
         default: 10000,
         title: 'How often to update log, in milliseconds',
+      },
+      totals: {
+        type: 'boolean',
+        default: true,
+        title: 'Publish a total number in navigation.log',
+      },
+      totals_base: {
+        type: 'number',
+        default: 0,
+        title: 'Add this number to the totals (in meters)',
       },
     },
   };
