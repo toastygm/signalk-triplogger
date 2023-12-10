@@ -64,13 +64,20 @@ module.exports = (app) => {
         {
           path: 'navigation.state',
           period: 1000,
-        },
-        {
-          path: 'navigation.position',
-          period: options.update_interval || 10000,
-        },
-      ],
+        }
+      ]
     };
+    if (options.XZS) {
+      subscription.subscribe.push({
+        path: 'navigation.speedThroughWater',
+        period: options.update_interval || 10000,
+      });
+    } else {
+      subscription.subscribe.push({
+        path: 'navigation.position',
+        period: options.update_interval || 10000,
+      });
+    }
 
     function resetTrip() {
       logs.current.reset();
@@ -176,27 +183,36 @@ module.exports = (app) => {
             return;
           }
           u.values.forEach((v) => {
+            if (options.use_speed_through_water) {
+              if (v.path === 'navigation.speedThroughWater') {
+                if (Number.isNaN(Number(v.value))) {
+                  const distance = v.value * 1000;
+                  appendTrip(distance);
+                }
+              }
+            } else {
+              if (v.path === 'navigation.position') {
+                if (Number.isNaN(Number(v.value.latitude))
+                  || Number.isNaN(Number(v.value.longitude))) {
+                  return;
+                }
+                const newPosition = new Point(v.value.latitude, v.value.longitude);
+                if (lastPosition) {
+                  const distance = lastPosition.distanceTo(newPosition) * 1000;
+                  appendTrip(distance);
+                }
+                lastPosition = newPosition;
+              }
+            }
             if (v.path === 'navigation.state') {
               // Potential state change
               handleState(v.value);
             }
-            if (v.path === 'navigation.position') {
-              if (Number.isNaN(Number(v.value.latitude))
-                || Number.isNaN(Number(v.value.longitude))) {
-                return;
-              }
-              const newPosition = new Point(v.value.latitude, v.value.longitude);
-              if (lastPosition) {
-                const distance = lastPosition.distanceTo(newPosition) * 1000;
-                appendTrip(distance);
-              }
-              lastPosition = newPosition;
-              if (logs.current) {
-                if (logs.current.inTrip()) {
-                  setStatus(`Under way: ${logs.current}`);
-                } else {
-                  setStatus(`Stopped. Last trip: ${logs.current}`);
-                }
+            if (logs.current) {
+              if (logs.current.inTrip()) {
+                setStatus(`Under way: ${logs.current}`);
+              } else {
+                setStatus(`Stopped. Last trip: ${logs.current}`);
               }
             }
           });
@@ -229,6 +245,11 @@ module.exports = (app) => {
         type: 'number',
         default: 0,
         title: 'Add this number to the totals (in meters)',
+      },
+      use_speed_through_water: {
+        type: 'boolean',
+        default: false,
+        title: 'Use speed through water instead of GPS',
       },
     },
   };
